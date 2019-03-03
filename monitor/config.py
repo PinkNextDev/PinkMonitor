@@ -1,25 +1,37 @@
 """
-Configuration module.
+Project configuration.
 """
 
 import logging
+from configparser import ConfigParser, Error
 
 
+logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("config")
+config = ConfigParser()
 
 try:
-    from .local_config import * # pylint: disable=W0401,W0614
-    RPC_PORT; SERVER_IP; RPC_USER; RPC_PASSWORD
-except ImportError:
-    log.error("Missing local_config.py file")
-    exit(1)
-except NameError:
-    log.error("Missing one of parameters: RPC_PORT, SERVER_IP, RPC_USER, RPC_PASSWORD")
+    config.read("config.ini")
+    if config.sections() == []:
+        log.error("Missing proper config.ini file")
+        exit(1)
 
-# SERVER_IP = "18.224.37.139" # "127.0.0.1"
-SERVER_URL = "http://" + SERVER_IP + ":" + str(RPC_PORT)
+    RPC_PORT = config.get("NODE", "RPC_PORT")
+    SERVER_IP = config.get("NODE", "SERVER_IP")
+    RPC_USER = config.get("NODE", "RPC_USER")
+    RPC_PASSWORD = config.get("NODE", "RPC_PASSWORD")
+
+    DB_USER = config.get("DATABASE", "DB_USER")
+    DB_PASSWORD = config.get("DATABASE", "DB_PASSWORD")
+    DB_NAME = config.get("DATABASE", "DB_NAME")
+    DB_PORT = config.get("DATABASE", "DB_PORT")
+
+except Error as err:
+    log.error(err)
+    exit(1)
+
+RPC_SERVER_URL = f"http://{SERVER_IP}:{RPC_PORT}"
+DB_CONFIG = f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@localhost:{DB_PORT}/{DB_NAME}"
 
 BITTREX_PRICE_URL = "https://bittrex.com/api/v1.1/public/getmarketsummary?market=btc-pink"
 BITTREX_DAILY_PRICES_URL = "https://bittrex.com/Api/v2.0/pub/market/GetTicks?marketName=BTC-PINK&tickInterval=day"
-
-data_folder = "blockchain"
