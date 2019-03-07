@@ -2,4 +2,4 @@ __pycache__
 /env
 .vscode
 config.ini
-*.h5
+.ipynb_checkpoints

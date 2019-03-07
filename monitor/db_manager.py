@@ -1,6 +1,7 @@
 
 from os import path
 import pandas as pd
+import numpy as np
 from sqlalchemy import create_engine
 from datetime import datetime
 import logging
@@ -13,10 +14,10 @@ from .db_models import Base
 from . import config
 
 
-log = logging.getLogger("scanner")
+log = logging.getLogger("dbmanager")
 
 
-class Scanner:
+class DBManager:
 
     columns = (
         "hash", "size", "height", "version", "merkleroot", "mint", "time", "nonce",
@@ -37,9 +38,13 @@ class Scanner:
         self.connection.close()
 
     def update(self):
+        log.info(f"Updating blockchain data...")
         data = None
         try:
             blocks_count = get_block_count()
+            if not blocks_count:
+                log.error("None blocks_count value: issue with RPC connection!")
+                exit(1)
             with self.engine.connect() as conn, conn.begin():
                 row_query = "SELECT * FROM blockchain ORDER BY height DESC LIMIT 1"
                 last_row = pd.read_sql_query(row_query, conn)
@@ -47,7 +52,8 @@ class Scanner:
                 if len(last_row) == 1:
                     start_block = last_row["height"].iloc[0] + 1
                 for i in range(start_block, blocks_count + 1, self.chunk_size):
-                    data = self.collect_data(i, i + self.chunk_size)
+                    to = np.clip(i + self.chunk_size, i, blocks_count + 1)
+                    data = self.collect_data(i, to)
                     data = data.set_index("height")
                     data.to_sql("blockchain", self.engine, chunksize=1000, if_exists="append")
         except Exception as err:
